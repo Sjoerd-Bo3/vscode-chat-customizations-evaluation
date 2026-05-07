@@ -72,6 +72,21 @@ LLM analysis requires **GitHub Copilot** — no API keys needed. Just sign in to
 | `chatCustomizationsEvaluations.customDiagnostics` | `[]` | Array of custom diagnostic objects with `name` and `description` fields |
 | `chatCustomizationsEvaluations.waza.command` | `waza` | Command used to run waza (for example `/usr/local/bin/waza`) |
 
+### Workspace-Local Custom Diagnostics
+
+In addition to the VS Code setting, you can define custom diagnostics in a `.github/copilot-custom-diagnostics.json` file in your workspace root. This allows teams to share project-specific diagnostics via source control.
+
+The file should contain a JSON array with the same schema as the setting:
+
+```json
+[
+  {"name": "Output Schema", "description": "Flag if the prompt does not define a JSON output schema."},
+  {"name": "Security Review", "description": "Flag if the prompt lacks security boundary instructions."}
+]
+```
+
+Diagnostics from both the setting and the workspace file are merged together during analysis.
+
 ## Architecture
 
 ```

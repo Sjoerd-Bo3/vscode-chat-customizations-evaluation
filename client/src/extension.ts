@@ -783,8 +783,48 @@ function updateHasDiagnosticsContext(): void {
 
 function getCustomDiagnostics(): CustomDiagnosticConfig[] | undefined {
   const configuration = vscode.workspace.getConfiguration('chatCustomizationsEvaluations');
-  const diagnostics = configuration.get<CustomDiagnosticConfig[]>('customDiagnostics', []);
+  const settingsDiagnostics = configuration.get<CustomDiagnosticConfig[]>('customDiagnostics', []);
+  const workspaceDiagnostics = getWorkspaceCustomDiagnostics();
+
+  const seen = new Set<string>();
+  const diagnostics: CustomDiagnosticConfig[] = [];
+  for (const d of [...settingsDiagnostics, ...workspaceDiagnostics]) {
+    if (d.name && d.description && !seen.has(d.name)) {
+      seen.add(d.name);
+      diagnostics.push(d);
+    }
+  }
   return diagnostics.length > 0 ? diagnostics : undefined;
+}
+
+function getWorkspaceCustomDiagnostics(): CustomDiagnosticConfig[] {
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (!workspaceFolders) {
+    return [];
+  }
+
+  const results: CustomDiagnosticConfig[] = [];
+  for (const folder of workspaceFolders) {
+    const filePath = path.join(folder.uri.fsPath, '.github', 'copilot-custom-diagnostics.json');
+    try {
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const parsed = JSON.parse(content);
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) {
+            if (item && typeof item.name === 'string' && item.name.trim() !== '' && typeof item.description === 'string' && item.description.trim() !== '') {
+              results.push({ name: item.name, description: item.description });
+            }
+          }
+        } else {
+          outputChannel.appendLine(`[Custom Diagnostics] Expected JSON array in ${filePath}, got ${typeof parsed}`);
+        }
+      }
+    } catch (e) {
+      outputChannel.appendLine(`[Custom Diagnostics] Failed to read ${filePath}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  return results;
 }
 
 function getWazaCommand(): string {
